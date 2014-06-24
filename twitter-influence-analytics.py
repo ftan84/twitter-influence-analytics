@@ -21,6 +21,7 @@ userinput = userinput.replace(' ', '').split(',')
 query = raw_input('Enter your query: ')
 
 # The first query
+print 'Running query...'
 results = tw.search.tweets(q=query,
         count=100,
         until='2014-06-13')
@@ -40,14 +41,15 @@ while not df.empty and counter > 0:
     df['user_id'] = [r['user']['id_str'] for r in results['statuses']]
     with open('data.csv', mode='a') as f:
         df.to_csv(f, encoding='UTF-8', header=False)
-
+print 'Completed query'
 
 # twitter_accounts = ['catiewayne', 'Animalists']
+print 'Determining influence...'
 twitter_accounts = userinput
 followers = []
 for sn in twitter_accounts:
     next_cursor = -1
-    max_list = 100000 / 5000 # Put a limit to how many followers we want to get
+    max_list = 1000000 / 5000 # Put a limit to how many followers we want to get
     while next_cursor and max_list >= 0:
         max_list -= 1
         x = tw.application.rate_limit_status(resources='followers')
@@ -58,6 +60,7 @@ for sn in twitter_accounts:
         results = tw.followers.ids(screen_name=sn, cursor=next_cursor, stringify_ids=True)
         next_cursor = results['next_cursor']
         followers += results['ids']
+print 'Completed influence'
 
 tweetData = pandas.DataFrame.from_csv('data.csv')
 counter = 0
