@@ -2,11 +2,32 @@ import twitter
 import pandas
 import time
 import json
+import os.path
+import sys
+import itertools
+import csv
 
 # tw = twitter.Twitter(auth=twitter.OAuth('1149944478-vXoBfwZ718WW12m6xFjoGHEvjQk73H1qP1g2q0Z',
 #                                 'muJVicR46pW7dlMqxDkyAakJMDtijFyPeMCzcETU5ohf0',
 #                                 'v5b3mm9hRjZ7kL7gcOUvxwr4m',
 #                                 't2NZr2T18jOEFcX8h2B1jS8k8JH5jwD2eVUZBFyGAdEVI22GT6'))
+
+def jsonUnicodeConvert(input):
+    '''Converts unicode JSON to str.'''
+    if isinstance(input, dict):
+        return {jsonUnicodeConvert(key): jsonUnicodeConvert(value) for key, value in input.iteritems()}
+    elif isinstance(input, list):
+        return [jsonUnicodeConvert(element) for element in input]
+    elif isinstance(input, unicode):
+        return input.encode('utf-8')
+    else:
+        return input
+
+spinner = itertools.cycle(['|', '/', '-', '\\'])
+
+def spin():
+    sys.stdout.write('\b{}'.format(spinner.next()))
+    sys.stdout.flush()
 
 # Load the config.json file
 with open('config.json', 'r') as f:
@@ -24,7 +45,8 @@ query = raw_input('Enter your query: ')
 print 'Running query...'
 results = tw.search.tweets(q=query,
         count=100,
-        until='2014-06-13')
+        until=time.strftime('%Y-%m-%d'))
+results = jsonUnicodeConvert(results)
 df = pandas.DataFrame(results['statuses'])
 df['user_id'] = [r['user']['id_str'] for r in results['statuses']]
 with open('data.csv', mode='w') as f:
@@ -32,6 +54,7 @@ with open('data.csv', mode='w') as f:
 counter = 100
 # Loop the query
 while not df.empty and counter > 0:
+    spin()
     counter -= 1
     minId = min(df.id) - 1
     results = tw.search.tweets(q=query,
@@ -41,15 +64,21 @@ while not df.empty and counter > 0:
     df['user_id'] = [r['user']['id_str'] for r in results['statuses']]
     with open('data.csv', mode='a') as f:
         df.to_csv(f, encoding='UTF-8', header=False)
-print 'Completed query'
+print '\nCompleted query'
 
 # twitter_accounts = ['catiewayne', 'Animalists']
 print 'Determining influence...'
 twitter_accounts = userinput
 followers = []
 for sn in twitter_accounts:
-    next_cursor = -1
-    max_list = 1000000 / 5000 # Put a limit to how many followers we want to get
+    spin()
+    if os.path.isfile('save.dat'):
+        with open('save.dat', 'r') as f:
+            next_cursor = json.loads(f.read())
+    else:
+        next_cursor = -1
+
+    max_list = 100000 / 5000 # Put a limit to how many followers we want to get
     while next_cursor and max_list >= 0:
         max_list -= 1
         x = tw.application.rate_limit_status(resources='followers')
@@ -60,12 +89,18 @@ for sn in twitter_accounts:
         results = tw.followers.ids(screen_name=sn, cursor=next_cursor, stringify_ids=True)
         next_cursor = results['next_cursor']
         followers += results['ids']
-print 'Completed influence'
+        with open('followers.csv', 'a') as f:
+            writer = csv.writer(f)
+            for id in results['ids']:
+                writer.writerow([id.encode('utf8')])
+        with open('save.dat', 'w') as f:
+            f.write('{"followers_next_cursor":"%s"}' % next_cursor)
 
 tweetData = pandas.DataFrame.from_csv('data.csv')
 counter = 0
 influencers = []
 for user in followers:
+    spin()
     if not tweetData[tweetData.user_id == int(user)].empty:
         counter += 1
         influencers.append(user)
@@ -74,8 +109,10 @@ for user in followers:
 
 impressions = 0
 for user in influencers:
+    spin()
     impressions += tw.users.lookup(user_id=user)[0]['followers_count']
 
+print '\nComplete!'
 # userPrettyPrint = ''
 # if len(twitter_accounts) == 1:
 #     userPrettyPrint = twitter_accounts[0]
@@ -102,3 +139,5 @@ print 'Your impressions have gone from {} to {}!'.format(len(followers), len(fol
 # print len(influencers)
 # print len(followers)
 #
+
+
