@@ -7,11 +7,6 @@ import sys
 import itertools
 import csv
 
-# tw = twitter.Twitter(auth=twitter.OAuth('1149944478-vXoBfwZ718WW12m6xFjoGHEvjQk73H1qP1g2q0Z',
-#                                 'muJVicR46pW7dlMqxDkyAakJMDtijFyPeMCzcETU5ohf0',
-#                                 'v5b3mm9hRjZ7kL7gcOUvxwr4m',
-#                                 't2NZr2T18jOEFcX8h2B1jS8k8JH5jwD2eVUZBFyGAdEVI22GT6'))
-
 def jsonUnicodeConvert(input):
     '''Converts unicode JSON to str.'''
     if isinstance(input, dict):
